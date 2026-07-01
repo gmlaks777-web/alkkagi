@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>온라인 알까기 · 3D 대전</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:rgba(18,22,32,0.82); --line:rgba(255,255,255,0.10);
+    --ink:#eef1f7; --sub:#9aa3b2; --p1:#ff5a5f; --p2:#3d8bff;
+    --gold:#f6c453; --ok:#54d98c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+    font-family:"Pretendard","Noto Sans KR",system-ui,-apple-system,sans-serif;
+    -webkit-user-select:none;user-select:none;touch-action:none}
+  #app{position:fixed;inset:0}
+  canvas{display:block;position:absolute;inset:0}
+  #hud{position:absolute;top:0;left:0;right:0;padding:18px 22px;display:flex;
+    align-items:center;justify-content:space-between;pointer-events:none;z-index:20}
+  .player{display:flex;align-items:center;gap:12px;background:var(--panel);
+    border:1px solid var(--line);border-radius:16px;padding:12px 18px;
+    backdrop-filter:blur(14px);min-width:220px}
+  .player.right{flex-direction:row-reverse;text-align:right}
+  .dot{width:16px;height:16px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 16px currentColor}
+  .p1 .dot{background:var(--p1);color:var(--p1)}
+  .p2 .dot{background:var(--p2);color:var(--p2)}
+  .pmeta{display:flex;flex-direction:column;gap:2px;line-height:1.15}
+  .pname{font-size:20px;font-weight:800;letter-spacing:-.3px;max-width:190px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pcount{font-size:12px;color:var(--sub);font-weight:600}
+  .pcount b{color:var(--ink);font-size:14px}
+  #centerbar{display:flex;flex-direction:column;align-items:center;gap:6px}
+  #turnpill{background:var(--panel);border:1px solid var(--line);border-radius:999px;
+    padding:8px 20px;font-weight:800;font-size:16px;backdrop-filter:blur(14px);
+    display:flex;align-items:center;gap:8px}
+  #turnpill .swatch{width:12px;height:12px;border-radius:50%}
+  #phase{font-size:11px;color:var(--sub);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+  #hint{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:12px 20px;font-size:14px;color:var(--sub);font-weight:600;
+    backdrop-filter:blur(14px);z-index:20;text-align:center;line-height:1.5;
+    pointer-events:none;max-width:90vw}
+  #hint b{color:var(--ink)}
+  #power{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);
+    width:min(420px,80vw);height:14px;background:rgba(255,255,255,.06);
+    border:1px solid var(--line);border-radius:999px;overflow:hidden;z-index:20;display:none}
+  #powerfill{height:100%;width:0%;
+    background:linear-gradient(90deg,var(--ok),var(--gold),var(--p1));transition:width .04s linear}
+  #backTop{position:absolute;left:22px;bottom:26px;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:12px 16px;color:var(--ink);
+    font-weight:700;font-size:14px;backdrop-filter:blur(14px);z-index:21;cursor:pointer;display:none}
+  #backTop:active{transform:scale(.96)}
+  #lobby{position:absolute;inset:0;z-index:60;
+    background:radial-gradient(1200px 800px at 50% -10%,#161c2b,#0b0e14 60%);
+    display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{width:min(460px,94vw);background:var(--panel);border:1px solid var(--line);
+    border-radius:24px;padding:34px 30px;backdrop-filter:blur(20px);
+    box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .brand{font-size:34px;font-weight:900;letter-spacing:-1px;line-height:1;margin-bottom:6px}
+  .brand .k{color:var(--gold)}
+  .tag{color:var(--sub);font-size:14px;font-weight:600;margin-bottom:26px}
+  label{display:block;font-size:12px;color:var(--sub);font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;margin:0 0 7px 2px}
+  input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:12px;padding:14px 16px;color:var(--ink);font-size:16px;font-weight:600;
+    font-family:inherit;margin-bottom:18px;outline:none}
+  input:focus{border-color:var(--gold)}
+  .row{display:flex;gap:12px}.row>*{flex:1}
+  button.act{width:100%;border:none;border-radius:12px;padding:15px;font-size:16px;
+    font-weight:800;font-family:inherit;cursor:pointer;color:#0b0e14;
+    transition:transform .08s,filter .15s}
+  button.act:active{transform:scale(.97)}
+  .primary{background:linear-gradient(135deg,var(--gold),#ffb02e)}
+  .ghost{background:rgba(255,255,255,.08);color:var(--ink);border:1px solid var(--line)}
+  .primary:hover,.ghost:hover{filter:brightness(1.08)}
+  .divider{display:flex;align-items:center;gap:12px;color:var(--sub);font-size:12px;
+    font-weight:700;margin:22px 0}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+  #status{margin-top:18px;font-size:13px;color:var(--sub);font-weight:600;
+    text-align:center;min-height:20px;line-height:1.5}
+  #status.err{color:var(--p1)}#status.ok{color:var(--ok)}
+  .codebox{display:flex;gap:8px;margin-bottom:6px}
+  .codebox input{margin:0;text-align:center;letter-spacing:3px;font-size:22px;
+    font-weight:800;text-transform:uppercase}
+  .copybtn{flex:0 0 auto;width:56px;border:1px solid var(--line);
+    background:rgba(255,255,255,.06);border-radius:12px;color:var(--ink);
+    font-weight:800;cursor:pointer}
+  .copybtn:active{transform:scale(.94)}
+  .small{font-size:12px;color:var(--sub);font-weight:600;margin-top:4px;line-height:1.5}
+  .hide{display:none!important}
+  #result{position:absolute;inset:0;z-index:70;display:none;align-items:center;
+    justify-content:center;background:rgba(6,8,12,.72);backdrop-filter:blur(6px)}
+  #result .rcard{text-align:center;animation:pop .4s cubic-bezier(.2,1.3,.4,1)}
+  @keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+  #rtitle{font-size:72px;font-weight:900;letter-spacing:-2px;text-shadow:0 8px 40px rgba(0,0,0,.6)}
+  #rsub{font-size:20px;color:var(--sub);font-weight:700;margin-top:6px}
+  #ragain{margin-top:28px;display:inline-block}
+  #ragain button{padding:14px 34px}
+  #toast{position:absolute;top:88px;left:50%;transform:translateX(-50%);
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:12px 22px;font-weight:700;font-size:15px;z-index:50;backdrop-filter:blur(14px);
+    opacity:0;transition:opacity .3s;pointer-events:none}
+  #toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud" class="hide">
+  <div class="player p1" id="hudP1"><div class="dot"></div>
+    <div class="pmeta"><div class="pname" id="p1name">홍</div>
+    <div class="pcount">남은 알 <b id="p1count">4</b></div></div></div>
+  <div id="centerbar">
+    <div id="turnpill"><span class="swatch" id="turnsw"></span><span id="turntext">홍 차례</span></div>
+    <div id="phase">TOP VIEW</div>
+  </div>
+  <div class="player p2 right" id="hudP2"><div class="dot"></div>
+    <div class="pmeta"><div class="pname" id="p2name">청</div>
+    <div class="pcount">남은 알 <b id="p2count">4</b></div></div></div>
+</div>
+<div id="power"><div id="powerfill"></div></div>
+<div id="hint" class="hide"></div>
+<button id="backTop">↑ 탑뷰로</button>
+<div id="toast"></div>
+<div id="result"><div class="rcard">
+  <div id="rtitle">WIN</div><div id="rsub"></div>
+  <div id="ragain"><button class="act primary" id="rematchBtn">다시 한 판</button></div>
+</div></div>
+<div id="lobby"><div class="card">
+  <div class="brand">온라인 <span class="k">알까기</span></div>
+  <div class="tag">3D 탑뷰 · 알 시점 조준 · 1:1 온라인 대전</div>
+  <div id="stepName">
+    <label>닉네임</label>
+    <input id="nick" maxlength="10" placeholder="방송용 닉네임" autocomplete="off">
+    <div class="row">
+      <button class="act primary" id="btnCreate">방 만들기</button>
+      <button class="act ghost" id="btnShowJoin">코드로 입장</button>
+    </div>
+    <div class="small">방을 만들면 <b>초대 코드</b>가 나옵니다. 게스트에게 코드를 보내세요.</div>
+  </div>
+  <div id="stepHost" class="hide">
+    <label>초대 코드 · 게스트에게 전달</label>
+    <div class="codebox"><input id="roomcode" readonly value="----">
+      <button class="copybtn" id="btnCopy">복사</button></div>
+    <div class="small">상대가 이 코드로 입장하면 대전이 시작됩니다. 창을 닫지 마세요.</div>
+    <div class="divider">상대 대기 중…</div>
+    <button class="act ghost" id="btnCancelHost">취소</button>
+  </div>
+  <div id="stepJoin" class="hide">
+    <label>초대 코드 입력</label>
+    <input id="joincode" maxlength="8" placeholder="예: 7KQ2"
+      style="text-align:center;letter-spacing:4px;text-transform:uppercase;font-size:22px;font-weight:800">
+    <button class="act primary" id="btnJoin">입장하기</button>
+    <div style="height:10px"></div>
+    <button class="act ghost" id="btnBackName">뒤로</button>
+  </div>
+  <div id="status"></div>
+  <div class="small" style="margin-top:20px;opacity:.7">
+    로컬 파일을 직접 열면 연결이 불안정할 수 있어요.
+    <b>https 호스팅(GitHub Pages 등)</b>에서 사용하는 것을 권장합니다.
+  </div>
+</div></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+/* ===== 상수 ===== */
+const BOARD=9, HALF=BOARD/2, EGG_R=0.42, EGG_H=0.62, PER_SIDE=4;
+const FRICTION=0.978, STOP_V=0.012, REST=0.9, MAX_POWER=0.58, CHARGE_T=1.0;
+const COL1=0xff5a5f, COL2=0x3d8bff;
+
+/* ===== Three 셋업 ===== */
+const app=document.getElementById('app');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0b0e14);
+scene.fog=new THREE.Fog(0x0b0e14,20,40);
+const camera=new THREE.PerspectiveCamera(52,1,0.1,100);
+
+const amb=new THREE.AmbientLight(0xffffff,0.55); scene.add(amb);
+const key=new THREE.DirectionalLight(0xffffff,1.15);
+key.position.set(6,15,8); key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);
+Object.assign(key.shadow.camera,{left:-10,right:10,top:10,bottom:-10,near:1,far:44});
+key.shadow.bias=-0.0004; scene.add(key);
+const rim=new THREE.DirectionalLight(0x6fa8ff,0.5); rim.position.set(-8,6,-6); scene.add(rim);
+
+const board=new THREE.Mesh(new THREE.BoxGeometry(BOARD,0.6,BOARD),
+  new THREE.MeshStandardMaterial({color:0x1a2030,roughness:0.85,metalness:0.1}));
+board.position.y=-0.3; board.receiveShadow=true; scene.add(board);
+const top=new THREE.Mesh(new THREE.PlaneGeometry(BOARD,BOARD),
+  new THREE.MeshStandardMaterial({color:0x232c40,roughness:0.7,metalness:0.05}));
+top.rotation.x=-Math.PI/2; top.position.y=0.002; top.receiveShadow=true; scene.add(top);
+const midline=new THREE.Mesh(new THREE.PlaneGeometry(BOARD,0.05),
+  new THREE.MeshBasicMaterial({color:0x44507a}));
+midline.rotation.x=-Math.PI/2; midline.position.y=0.004; scene.add(midline);
+/* 테두리 라인 */
+const edge=new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(BOARD,0.62,BOARD)),
+  new THREE.LineBasicMaterial({color:0x4a5578}));
+edge.position.y=-0.3; scene.add(edge);
+
+/* ===== 알 만들기 ===== */
+function makeEgg(color, side, idx){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(EGG_R,32,24),
+    new THREE.MeshStandardMaterial({color, roughness:0.35, metalness:0.15,
+      emissive:color, emissiveIntensity:0.06}));
+  body.scale.y=EGG_H/EGG_R;
+  body.castShadow=true; body.receiveShadow=true;
+  g.add(body);
+  /* 상단 하이라이트 링(선택 표시용) */
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(EGG_R*1.25,0.05,12,40),
+    new THREE.MeshBasicMaterial({color:0xffffff}));
+  ring.rotation.x=-Math.PI/2; ring.position.y=EGG_H+0.02; ring.visible=false;
+  g.add(ring);
+  g.userData={vx:0,vz:0,alive:true,side,idx,body,ring,color};
+  scene.add(g);
+  return g;
+}
+let eggs=[];
+function layoutEggs(){
+  eggs.forEach(e=>scene.remove(e)); eggs=[];
+  const cols=[-2.2,-0.75,0.75,2.2];
+  for(let i=0;i<PER_SIDE;i++){
+    const e1=makeEgg(COL1,0,i); e1.position.set(cols[i],EGG_H,HALF-1.4); eggs.push(e1);
+    const e2=makeEgg(COL2,1,i); e2.position.set(cols[i],EGG_H,-(HALF-1.4)); eggs.push(e2);
+  }
+}
+
+/* ===== 조준용 화살표 ===== */
+const aimGroup=new THREE.Group(); aimGroup.visible=false; scene.add(aimGroup);
+const arrowShaft=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1,10),
+  new THREE.MeshBasicMaterial({color:0xffffff}));
+arrowShaft.rotation.z=Math.PI/2; aimGroup.add(arrowShaft);
+const arrowHead=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.35,12),
+  new THREE.MeshBasicMaterial({color:0xffffff}));
+arrowHead.rotation.z=-Math.PI/2; aimGroup.add(arrowHead);
+
+/* ===== 카메라 상태 ===== */
+const CAM={mode:'top'}; // top | egg
+let camPos=new THREE.Vector3(0,15.5,0.01), camLook=new THREE.Vector3(0,0,0);
+let camPosTarget=camPos.clone(), camLookTarget=camLook.clone();
+function setTopView(){
+  CAM.mode='top';
+  // 게스트(청)는 판을 반대편에서 내려다봐서 자기 알이 화면 아래쪽에 오게
+  const flip = (myPlayer===1)? -1 : 1;
+  camPosTarget.set(0,15.5,0.01*flip);
+  camLookTarget.set(0,0,0);
+  // 카메라 up 벡터로 화면 회전
+  camera.up.set(0,0,flip===1?-1:1);
+  aimGroup.visible=false;
+  document.getElementById('phase').textContent='TOP VIEW';
+  document.getElementById('backTop').style.display='none';
+}
+function setEggView(egg){
+  CAM.mode='egg';
+  camera.up.set(0,1,0);
+  document.getElementById('phase').textContent='EGG VIEW';
+  document.getElementById('backTop').style.display=selectedEgg?'block':'none';
+  updateEggCamera();
+}
+function updateEggCamera(){
+  if(!selectedEgg) return;
+  const p=selectedEgg.position;
+  const dir=new THREE.Vector2(Math.sin(aimAngle),Math.cos(aimAngle));
+  // 알 뒤쪽에서 살짝 낮게 바라보는 로우앵글
+  camPosTarget.set(p.x - dir.x*2.6, 1.5, p.z - dir.y*2.6);
+  camLookTarget.set(p.x + dir.x*3.5, 0.5, p.z + dir.y*3.5);
+}
+
+/* ===== 게임 상태 ===== */
+let myPlayer=0;          // 0=홍(호스트), 1=청(게스트)
+let isHost=false;
+let currentTurn=0;       // 지금 차례
+let selectedEgg=null;
+let aimAngle=0;
+let charging=false, chargeStart=0, chargePower=0;
+let moving=false;        // 알들이 굴러가는 중
+let names=['홍','청'];
+let gameActive=false;
+
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+
+function myTurn(){ return currentTurn===myPlayer; }
+
+/* ===== HUD ===== */
+function updateHUD(){
+  const c=[0,0]; eggs.forEach(e=>{ if(e.userData.alive) c[e.userData.side]++; });
+  document.getElementById('p1count').textContent=c[0];
+  document.getElementById('p2count').textContent=c[1];
+  document.getElementById('p1name').textContent=names[0];
+  document.getElementById('p2name').textContent=names[1];
+  const sw=document.getElementById('turnsw');
+  const tt=document.getElementById('turntext');
+  sw.style.background=currentTurn===0?'#ff5a5f':'#3d8bff';
+  const who=names[currentTurn];
+  tt.textContent = myTurn()? `내 차례 (${who})` : `${who} 차례`;
+  return c;
+}
+function checkWin(){
+  const c=updateHUD();
+  if(c[0]===0||c[1]===0){
+    gameActive=false;
+    const winner = c[0]===0?1:0;
+    showResult(winner);
+    return true;
+  }
+  return false;
+}
+
+/* ===== 입력 ===== */
+function screenToBoard(cx,cy){
+  const r=renderer.domElement.getBoundingClientRect();
+  pointer.x=((cx-r.left)/r.width)*2-1;
+  pointer.y=-((cy-r.top)/r.height)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const hit=new THREE.Vector3();
+  raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),0),hit);
+  return hit;
+}
+function pickEgg(cx,cy){
+  const r=renderer.domElement.getBoundingClientRect();
+  pointer.x=((cx-r.left)/r.width)*2-1;
+  pointer.y=-((cy-r.top)/r.height)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const meshes=eggs.filter(e=>e.userData.alive).map(e=>e.userData.body);
+  const hits=raycaster.intersectObjects(meshes,false);
+  if(hits.length) return hits[0].object.parent;
+  return null;
+}
+function selectEgg(egg){
+  if(selectedEgg) selectedEgg.userData.ring.visible=false;
+  selectedEgg=egg;
+  egg.userData.ring.visible=true;
+  aimGroup.visible=true;
+  // 기본 조준: 상대 진영 쪽(홍은 -z 방향, 청은 +z 방향)
+  aimAngle = myPlayer===0? Math.PI : 0;
+  setEggView(egg);
+  document.getElementById('hint').innerHTML=
+    '<b>좌우 드래그</b>로 조준 · <b>화면을 꾹 눌렀다 떼면</b> 파워만큼 발사';
+}
+
+/* ===== pointer 처리 =====
+   흐름:
+   - 탑뷰: 내 알 클릭 -> 알 시점 전환
+   - 알뷰: 좌우 드래그로 조준. 누르는 시간이 곧 파워(꾹 누를수록 강함). 떼면 발사.
+*/
+let pressing=false, dragStartX=0, aimStartAngle=0, didDrag=false;
+renderer.domElement.addEventListener('pointerdown', e=>{
+  if(!gameActive||!myTurn()||moving) return;
+  if(CAM.mode==='top'){
+    const egg=pickEgg(e.clientX,e.clientY);
+    if(egg && egg.userData.side===myPlayer) selectEgg(egg);
+    return;
+  }
+  if(!selectedEgg) return;
+  pressing=true; didDrag=false;
+  dragStartX=e.clientX; aimStartAngle=aimAngle;
+  charging=true; chargeStart=performance.now(); chargePower=0;
+  document.getElementById('power').style.display='block';
+});
+renderer.domElement.addEventListener('pointermove', e=>{
+  if(!pressing||!selectedEgg) return;
+  const dx=e.clientX-dragStartX;
+  if(Math.abs(dx)>4) didDrag=true;
+  aimAngle=aimStartAngle - dx*0.006;
+  updateEggCamera();
+});
+window.addEventListener('pointerup', ()=>{
+  if(!pressing) return;
+  pressing=false;
+  if(charging){
+    if(chargePower>0.06) fireSelected();   // 충분히 충전했으면 발사
+    else {                                  // 살짝 눌렀다 뗀 경우: 취소(조준만)
+      charging=false; chargePower=0;
+      document.getElementById('power').style.display='none';
+      document.getElementById('powerfill').style.width='0%';
+    }
+  }
+});
+
+function fireSelected(){
+  if(!selectedEgg) return;
+  const dir=new THREE.Vector2(Math.sin(aimAngle),Math.cos(aimAngle));
+  const power=Math.min(chargePower,1)*MAX_POWER;
+  const vx=dir.x*power, vz=dir.y*power;
+  applyShot(selectedEgg.userData.idx, selectedEgg.userData.side, vx, vz);
+  // 네트워크 전송
+  net.send({t:'shot', idx:selectedEgg.userData.idx, side:selectedEgg.userData.side, vx, vz});
+  charging=false; chargePower=0;
+  document.getElementById('power').style.display='none';
+  document.getElementById('powerfill').style.width='0%';
+}
+function applyShot(idx, side, vx, vz){
+  const egg=eggs.find(e=>e.userData.idx===idx && e.userData.side===side && e.userData.alive);
+  if(!egg) return;
+  egg.userData.vx=vx; egg.userData.vz=vz;
+  egg.userData.ring.visible=false;
+  selectedEgg=null; aimGroup.visible=false;
+  moving=true;
+  setTopView();
+}
+
+/* ===== 물리 업데이트 ===== */
+function physics(){
+  let any=false;
+  for(const e of eggs){
+    const u=e.userData; if(!u.alive) continue;
+    if(Math.abs(u.vx)>STOP_V||Math.abs(u.vz)>STOP_V){
+      e.position.x+=u.vx; e.position.z+=u.vz;
+      u.vx*=FRICTION; u.vz*=FRICTION;
+      any=true;
+      // 굴러가는 회전 표현
+      e.rotation.x += u.vz*0.9; e.rotation.z -= u.vx*0.9;
+    } else { u.vx=0; u.vz=0; }
+  }
+  // 충돌
+  for(let i=0;i<eggs.length;i++){
+    const a=eggs[i].userData; if(!a.alive) continue;
+    for(let j=i+1;j<eggs.length;j++){
+      const b=eggs[j].userData; if(!b.alive) continue;
+      const dx=eggs[j].position.x-eggs[i].position.x;
+      const dz=eggs[j].position.z-eggs[i].position.z;
+      const d=Math.hypot(dx,dz); const min=EGG_R*2;
+      if(d>0 && d<min){
+        const nx=dx/d, nz=dz/d, overlap=min-d;
+        eggs[i].position.x-=nx*overlap/2; eggs[i].position.z-=nz*overlap/2;
+        eggs[j].position.x+=nx*overlap/2; eggs[j].position.z+=nz*overlap/2;
+        const rvx=b.vx-a.vx, rvz=b.vz-a.vz;
+        const vn=rvx*nx+rvz*nz;
+        if(vn<0){
+          const imp=-(1+REST)*vn/2;
+          a.vx-=imp*nx; a.vz-=imp*nz;
+          b.vx+=imp*nx; b.vz+=imp*nz;
+          any=true;
+        }
+      }
+    }
+  }
+  // 낙사 판정
+  for(const e of eggs){
+    const u=e.userData; if(!u.alive) continue;
+    if(Math.abs(e.position.x)>HALF+0.1||Math.abs(e.position.z)>HALF+0.1){
+      u.alive=false; u.vx=0; u.vz=0;
+      // 떨어지는 연출
+      dropEgg(e);
+    }
+  }
+  if(moving && !any){
+    moving=false;
+    if(!checkWin()){
+      // 턴 넘기기 (호스트만 권한, 결정론 유지 위해 양쪽 동일 전환)
+      endTurn();
+    }
+  }
+}
+function dropEgg(e){
+  // 간단히 아래로 떨어뜨렸다가 제거
+  let t=0;
+  const fall=()=>{
+    t+=0.016; e.position.y-=0.08*(1+t*4);
+    e.rotation.x+=0.3;
+    if(e.position.y>-6){ requestAnimationFrame(fall); }
+    else { e.visible=false; }
+  };
+  fall();
+  showToast(`${names[e.userData.side]} 알 아웃!`);
+}
+
+function endTurn(){
+  currentTurn = currentTurn===0?1:0;
+  selectedEgg=null; aimGroup.visible=false;
+  setTopView();
+  updateHUD();
+  if(myTurn()){
+    document.getElementById('hint').innerHTML='<b>내 알을 클릭</b>해서 시점을 전환하세요';
+  } else {
+    document.getElementById('hint').innerHTML=`<b>${names[currentTurn]}</b>님의 차례입니다`;
+  }
+}
+
+/* ===== 결과 ===== */
+function showResult(winner){
+  const r=document.getElementById('result');
+  const win = winner===myPlayer;
+  document.getElementById('rtitle').textContent = win?'WIN':'LOSE';
+  document.getElementById('rtitle').style.color = winner===0?'#ff5a5f':'#3d8bff';
+  document.getElementById('rsub').textContent = `${names[winner]} 승리!`;
+  r.style.display='flex';
+}
+document.getElementById('rematchBtn').addEventListener('click',()=>{
+  net.send({t:'rematch'});
+  doRematch();
+});
+window.requestRematch=()=>document.getElementById('rematchBtn').click();
+function doRematch(){
+  document.getElementById('result').style.display='none';
+  layoutEggs(); currentTurn=0; gameActive=true; moving=false;
+  setTopView(); updateHUD();
+  document.getElementById('hint').innerHTML = myTurn()?
+    '<b>내 알을 클릭</b>해서 시점을 전환하세요':`<b>${names[currentTurn]}</b>님의 차례입니다`;
+}
+
+/* ===== 토스트 ===== */
+let toastT;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1600);
+}
+
+/* ===== 뒤로가기 버튼 ===== */
+document.getElementById('backTop').addEventListener('click',()=>{
+  if(selectedEgg) selectedEgg.userData.ring.visible=false;
+  selectedEgg=null; setTopView();
+  document.getElementById('hint').innerHTML='<b>내 알을 클릭</b>해서 시점을 전환하세요';
+});
+
+/* ===== 렌더 루프 ===== */
+function tick(){
+  requestAnimationFrame(tick);
+  // 파워 충전
+  if(charging){
+    const held=(performance.now()-chargeStart)/1000;
+    chargePower=Math.min(held/CHARGE_T,1);
+    document.getElementById('powerfill').style.width=(chargePower*100)+'%';
+  }
+  physics();
+  // 조준 화살표 위치
+  if(selectedEgg && aimGroup.visible){
+    const p=selectedEgg.position;
+    aimGroup.position.set(p.x,EGG_H+0.1,p.z);
+    aimGroup.rotation.y=-aimAngle;
+    const len=0.8+chargePower*1.6;
+    arrowShaft.scale.x=len; arrowShaft.position.x=len/2;
+    arrowHead.position.x=len+0.15;
+    if(CAM.mode==='egg') updateEggCamera();
+  }
+  // 카메라 부드럽게
+  camPos.lerp(camPosTarget,0.12);
+  camLook.lerp(camLookTarget,0.12);
+  camera.position.copy(camPos);
+  camera.lookAt(camLook);
+  renderer.render(scene,camera);
+}
+
+/* ===== 리사이즈 ===== */
+function resize(){
+  const w=innerWidth,h=innerHeight;
+  renderer.setSize(w,h);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+addEventListener('resize',resize); resize();
+layoutEggs(); setTopView(); tick();
+
+/* =========================================================
+   네트워크 (PeerJS)
+========================================================= */
+const net={
+  peer:null, conn:null, ready:false,
+  send(obj){ if(this.conn && this.conn.open) this.conn.send(obj); }
+};
+function shortId(){ return Math.random().toString(36).slice(2,6).toUpperCase(); }
+function roomToPeerId(code){ return 'alkkagi-3d-'+code.toUpperCase(); }
+
+const $=id=>document.getElementById(id);
+function setStatus(msg,cls){ const s=$('status'); s.textContent=msg||''; s.className=cls||''; }
+
+$('btnShowJoin').onclick=()=>{
+  if(!getNick()) return;
+  $('stepName').classList.add('hide'); $('stepJoin').classList.remove('hide'); setStatus('');
+};
+$('btnBackName').onclick=()=>{
+  $('stepJoin').classList.add('hide'); $('stepName').classList.remove('hide'); setStatus('');
+};
+$('btnCancelHost').onclick=()=>location.reload();
+$('btnCopy').onclick=()=>{
+  navigator.clipboard?.writeText($('roomcode').value);
+  $('btnCopy').textContent='완료'; setTimeout(()=>$('btnCopy').textContent='복사',1200);
+};
+function getNick(){
+  const n=$('nick').value.trim();
+  if(!n){ setStatus('닉네임을 입력해주세요','err'); return null; }
+  names[0]=n; return n;
+}
+function startHosting(){
+  const code=shortId();
+  $('roomcode').value=code;
+  $('stepName').classList.add('hide'); $('stepHost').classList.remove('hide');
+  setStatus('연결 서버에 접속 중…');
+  isHost=true; myPlayer=0;
+  net.peer=new Peer(roomToPeerId(code));
+  net.peer.on('open',()=>setStatus('상대를 기다리는 중… 코드: '+code,'ok'));
+  net.peer.on('error',e=>setStatus('오류: '+e.type+' (코드 충돌 시 새로고침)','err'));
+  net.peer.on('connection',conn=>{
+    net.conn=conn;
+    conn.on('open',()=>{
+      conn.send({t:'hello', name:names[0]});
+    });
+    conn.on('data',d=>handleData(d));
+    conn.on('close',()=>onDisconnect());
+  });
+}
+$('btnCreate').onclick=()=>{ if(!getNick()) return; startHosting(); };
+
+$('btnJoin').onclick=()=>{
+  const nick=$('nick').value.trim();
+  const code=$('joincode').value.trim().toUpperCase();
+  if(!nick){ setStatus('닉네임을 입력해주세요','err'); return; }
+  if(!code){ setStatus('초대 코드를 입력해주세요','err'); return; }
+  names[1]=nick; isHost=false; myPlayer=1;
+  setStatus('연결 서버에 접속 중…');
+  net.peer=new Peer();
+  net.peer.on('open',()=>{
+    setStatus('방에 연결 중…');
+    const conn=net.peer.connect(roomToPeerId(code),{reliable:true});
+    net.conn=conn;
+    conn.on('open',()=>{
+      conn.send({t:'hello', name:names[1]});
+      setStatus('연결됨! 게임 시작 대기…','ok');
+    });
+    conn.on('data',d=>handleData(d));
+    conn.on('close',()=>onDisconnect());
+    setTimeout(()=>{ if(!net.ready) setStatus('연결 실패. 코드를 확인하세요','err'); },8000);
+  });
+  net.peer.on('error',e=>setStatus('오류: '+e.type+' — 코드를 확인하세요','err'));
+};
+
+function handleData(d){
+  if(d.t==='hello'){
+    if(isHost){ names[1]=d.name; net.conn.send({t:'start', hostName:names[0], guestName:names[1]}); startGame(); }
+  } else if(d.t==='start'){
+    names[0]=d.hostName; names[1]=d.guestName; startGame();
+  } else if(d.t==='shot'){
+    applyShot(d.idx, d.side, d.vx, d.vz);
+  } else if(d.t==='rematch'){
+    doRematch();
+  }
+}
+function startGame(){
+  net.ready=true;
+  $('lobby').style.display='none';
+  $('hud').classList.remove('hide');
+  $('hint').classList.remove('hide');
+  gameActive=true; currentTurn=0;
+  layoutEggs(); setTopView(); updateHUD();
+  $('hint').innerHTML = myTurn()?
+    '<b>내 알을 클릭</b>해서 시점을 전환하세요':`<b>${names[currentTurn]}</b>님의 차례입니다`;
+  showToast('대전 시작! 홍 선공');
+}
+function onDisconnect(){
+  gameActive=false;
+  showToast('상대 연결이 끊어졌습니다');
+  setTimeout(()=>{ if(confirm('상대 연결이 끊어졌습니다. 로비로 돌아갈까요?')) location.reload(); },300);
+}
+</script>
+</body>
+</html>

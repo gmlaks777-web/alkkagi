@@ -109,6 +109,9 @@
   #titleLogo{position:fixed;z-index:3;left:40px;top:24%;transform:none;
     width:26%;max-width:380px;pointer-events:none;
     filter:drop-shadow(0 8px 18px rgba(0,0,0,.4))}
+  #logoVer{position:fixed;z-index:3;left:40px;top:calc(24% + 15vw);
+    width:26%;max-width:380px;text-align:center;pointer-events:none;
+    font-size:14px;font-weight:800;color:rgba(255,255,255,.55);letter-spacing:.05em}
   #lobby.editing #titleLogo{pointer-events:auto}
   #lobby.editing #titleLogo,
   #lobby.editing #stepName .opts,
@@ -168,8 +171,9 @@
   button.act:hover{filter:brightness(1.08)}
   .hide{display:none!important}
   .codebox{display:flex;gap:8px;margin-bottom:6px}
-  .codebox input{margin:0;text-align:center;letter-spacing:3px;font-size:22px;
-    font-weight:800;text-transform:uppercase}
+  .codebox input{flex:1;min-width:0;width:100%;box-sizing:border-box;margin:0;
+    text-align:center;letter-spacing:3px;font-size:22px;
+    font-weight:800;text-transform:uppercase;padding-left:8px;padding-right:8px}
   .copybtn{flex:0 0 auto;width:56px;border:1px solid var(--line);
     background:rgba(255,255,255,.06);border-radius:12px;color:var(--ink);font-weight:800;cursor:pointer}
   .copybtn:active{transform:scale(.94)}
@@ -178,6 +182,20 @@
   #status.err{color:var(--p1)}#status.ok{color:var(--ok)}
   .small{font-size:12px;color:var(--sub);font-weight:600;margin-top:4px;line-height:1.5}
   .small b{color:var(--ink)}
+  /* 대기자 목록 */
+  #waitList{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto}
+  .wlEmpty{font-size:13px;color:var(--sub);text-align:center;padding:16px 0;font-weight:600}
+  .wlItem{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);
+    border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .wlName{flex:1;font-weight:800;font-size:15px;color:var(--ink);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .wlPick{flex:0 0 auto;background:linear-gradient(135deg,#c6f24a,#9fe000);color:#123;
+    border:none;border-radius:9px;padding:9px 16px;font-weight:800;font-size:14px;
+    font-family:inherit;cursor:pointer}
+  .wlPick:active{transform:scale(.95)}
+  .wlPick:disabled{opacity:.5;cursor:default}
+  .wlDot{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:0 0 auto;
+    box-shadow:0 0 8px #4ade80}
   #result{position:absolute;inset:0;z-index:70;display:none;align-items:center;
     justify-content:center;background:rgba(6,8,12,.72);backdrop-filter:blur(6px)}
   #result .rcard{text-align:center;animation:pop .4s cubic-bezier(.2,1.3,.4,1)}
@@ -200,6 +218,10 @@
   @media (max-width:768px){
     #titleLogo{position:fixed!important;top:6%!important;left:50%!important;
       transform:translateX(-50%)!important;width:46%!important;max-width:230px;z-index:5}
+    #logoVer{position:fixed!important;top:calc(6% + 26vw)!important;left:50%!important;
+      transform:translateX(-50%)!important;width:46%!important;max-width:230px;font-size:12px;z-index:5}
+    .codebox input{font-size:18px;letter-spacing:2px;padding-left:6px;padding-right:6px}
+    .copybtn{width:48px;font-size:13px}
     /* 모바일: 카드(UI) 하단 중앙 정렬, 화면 폭 채움 */
     .card{max-width:100%!important;margin:0 auto!important;
       padding:22px 18px calc(24px + env(safe-area-inset-bottom))!important;border-radius:18px}
@@ -260,11 +282,13 @@
   <div id="rtitle">WIN</div><div id="rsub"></div>
   <div id="ragain">
     <button class="act" id="rematchBtn">다시 한 판</button>
+    <button class="act" id="rnextBtn" style="display:none">다음 도전자</button>
     <button class="act" id="rexitBtn">나가기</button>
   </div>
 </div></div>
 <div id="lobby"><div class="card" id="lobbyCard">
   <img id="titleLogo" alt="허까기">
+  <div id="logoVer">v1.0</div>
   <div class="cardInner">
   <div id="stepName">
     <input id="nick" maxlength="10" placeholder="닉네임 입력" autocomplete="off">
@@ -292,8 +316,9 @@
     <label>초대 코드 · 게스트에게 전달</label>
     <div class="codebox"><input id="roomcode" readonly value="----">
       <button class="copybtn" id="btnCopy">복사</button></div>
-    <div class="small">상대가 코드로 입장하면 시작됩니다. 창을 닫지 마세요.</div>
-    <div style="height:12px"></div>
+    <div class="small">도전자가 코드로 입장하면 아래 목록에 떠요. 최대 4명 대기.</div>
+    <div id="waitList"><div class="wlEmpty">대기 중인 도전자가 없어요…</div></div>
+    <div style="height:10px"></div>
     <div class="opt" id="btnCancelHost">취소</div>
   </div>
 
@@ -428,8 +453,9 @@ const BOARD=26, HALF=BOARD/2;
 const EGG_R=0.62, EGG_H=0.34;      // 기준 알 반지름(개별 크기의 배수 기준)
 const PER_SIDE=8;                    // 진영별 8알
 // 손맛: 마찰 강하게(덜 미끄러짐), 반발 낮게(덜 통통 튐), 정지 임계 높게(빨리 멎음)
-const GAME_VERSION='v1.0';
+const GAME_VERSION='v1.1';
 try{ const vt=document.getElementById('verTag'); if(vt) vt.textContent=GAME_VERSION; }catch(_){}
+try{ const lv=document.getElementById('logoVer'); if(lv) lv.textContent=GAME_VERSION; }catch(_){}
 const FRICTION=0.952, STOP_V=0.02, REST=0.55, MAX_POWER=1.15, CHARGE_T=1.15;
 const COL1=0xd94b4b, COL2=0x2f6fd0; // 홍/청 (장기색 느낌)
 
@@ -1209,8 +1235,22 @@ function showResult(winner){
   $('rsub').textContent = `${names[winner]} 승리!`;
   $('result').style.display='flex';
   $('hostPanel').classList.add('hide');
+  // 방장이고 온라인이면: '다음 도전자'로 대기열 복귀, '다시 한 판'은 현재 상대와 재대결
+  if(isHost && !soloMode){
+    $('rnextBtn').style.display='inline-block';
+  } else {
+    $('rnextBtn').style.display='none';
+  }
 }
 $('rematchBtn').addEventListener('click',()=>{ net.send({t:'rematch'}); doRematch(); });
+$('rnextBtn').addEventListener('click',()=>{
+  // 현재 상대를 대기열에서 제거하고 방장 대기 화면으로
+  try{ net.send({t:'bye'}); }catch(_){}
+  const cur=net.waiting.find(e=>e.conn===net.conn);
+  if(cur){ try{ cur.conn.close(); }catch(_){} removeWaiting(cur); }
+  net.matchOpen=false; net.conn=null;
+  backToHostWait();
+});
 $('rexitBtn').addEventListener('click',()=>location.reload());
 // 방장 컨트롤: 양팀 스킬을 제한 없이 발동 (후원 연동도 이 함수 사용)
 document.querySelectorAll('#hostPanel .hpBtn, #hostPanel .hpQuake, #hostPanel .hpBomb').forEach(b=>{
@@ -1351,9 +1391,12 @@ function doRematch(){
 /* ========================================================
    PeerJS 네트워크 (1:1)
 ======================================================== */
-const GAME_VER='v7';
+const GAME_VER='v8';
 const net={ peer:null, conn:null, ready:false,
+  waiting:[],        // 대기 중인 도전자 [{conn, name, id}]
+  matchOpen:false,   // 현재 대전 중인지
   send(o){ if(this.conn && this.conn.open) this.conn.send(o); } };
+const MAX_WAIT=4;    // 최대 대기자
 
 /* ICE 서버: STUN + 전용 TURN(Metered).
    본인 계정 자격증명이라 안정적으로 다른 네트워크끼리 연결됩니다. */
@@ -1428,10 +1471,16 @@ $('btnCreate').addEventListener('click',()=>{
   net.peer.on('open',()=>setStatus('상대 대기 중… 코드: '+code,'ok'));
   net.peer.on('error',e=>setStatus('오류: '+e.type+' (코드 충돌 시 새로고침)','err'));
   net.peer.on('connection',conn=>{
-    net.conn=conn;
-    conn.on('open',()=>{ conn.send({t:'hello', name:names[0], ver:GAME_VER}); startKeepalive(); });
-    conn.on('data',d=>handleData(d));
-    conn.on('close',onDisconnect);
+    // 대기열이 가득 찼으면 거절
+    if(net.waiting.length>=MAX_WAIT){
+      conn.on('open',()=>{ try{ conn.send({t:'full'}); }catch(_){} setTimeout(()=>conn.close(),400); });
+      return;
+    }
+    const entry={ conn, name:'(입력 중…)', id:Math.random().toString(36).slice(2,8) };
+    net.waiting.push(entry);
+    conn.on('open',()=>{ startKeepaliveFor(conn); });
+    conn.on('data',d=>handleHostData(d, entry));
+    conn.on('close',()=>{ removeWaiting(entry); });
     conn.on('error',e=>console.warn('host conn error',e));
   });
 });
@@ -1448,7 +1497,7 @@ $('btnJoin').addEventListener('click',()=>{
     setStatus('방에 연결 중…');
     const conn=net.peer.connect(roomToPeerId(code),{reliable:true});
     net.conn=conn;
-    conn.on('open',()=>{ conn.send({t:'hello', name:names[1], ver:GAME_VER}); setStatus('연결됨! 시작 대기…','ok'); startKeepalive(); });
+    conn.on('open',()=>{ conn.send({t:'hello', name:names[1], ver:GAME_VER}); setStatus('입장 완료! 방장이 선택할 때까지 대기 중…','ok'); startKeepalive(); });
     conn.on('data',d=>handleData(d));
     conn.on('close',onDisconnect);
     conn.on('error',e=>setStatus('연결 오류: '+(e&&e.type||e),'err'));
@@ -1461,13 +1510,92 @@ $('btnJoin').addEventListener('click',()=>{
   });
 });
 
-function handleData(d){
-  if(d.t==='ping'){ return; }   // keepalive
+// ===== 방장 대기열 관리 =====
+function startKeepaliveFor(conn){
+  // 각 대기 연결도 살아있게(간단히 공용 타이머 재사용)
+  if(!kaTimer) startKeepalive();
+}
+function removeWaiting(entry){
+  const i=net.waiting.indexOf(entry);
+  if(i>=0) net.waiting.splice(i,1);
+  // 대전 중이던 상대가 나가면 처리
+  if(net.conn===entry.conn && net.matchOpen){
+    net.matchOpen=false; net.conn=null;
+    if(gameActive){ gameActive=false; showToast('상대가 나갔어요'); backToHostWait(); }
+  }
+  renderWaitList();
+}
+function handleHostData(d, entry){
+  if(d.t==='ping') return;
   if(d.t==='hello'){
     if(d.ver && d.ver!==GAME_VER){
-      alert('상대와 게임 버전이 다릅니다 (상대: '+d.ver+', 나: '+GAME_VER+').\n양쪽 모두 브라우저에서 Ctrl+Shift+R로 새로고침 후 다시 시도하세요.');
+      try{ entry.conn.send({t:'verwarn', host:GAME_VER}); }catch(_){}
     }
-    if(isHost){ names[1]=d.name; net.conn.send({t:'start', hostName:names[0], guestName:names[1]}); startOnline(); }
+    entry.name = d.name || '도전자';
+    renderWaitList();
+  } else if(net.conn===entry.conn) {
+    // 현재 대전 중인 상대의 게임 데이터만 처리
+    handleData(d);
+  }
+  // 대전 상대 아닌 대기자의 게임 메시지는 무시
+}
+function renderWaitList(){
+  const box=$('waitList'); if(!box) return;
+  if(net.waiting.length===0){
+    box.innerHTML='<div class="wlEmpty">대기 중인 도전자가 없어요…</div>';
+    return;
+  }
+  box.innerHTML='';
+  net.waiting.forEach(entry=>{
+    const row=document.createElement('div'); row.className='wlItem';
+    const dot=document.createElement('span'); dot.className='wlDot'; row.appendChild(dot);
+    const nm=document.createElement('span'); nm.className='wlName'; nm.textContent=entry.name; row.appendChild(nm);
+    const btn=document.createElement('button'); btn.className='wlPick';
+    const isCurrent=(net.conn===entry.conn && net.matchOpen);
+    btn.textContent = isCurrent ? '대전 중' : '선택';
+    btn.disabled = isCurrent || net.matchOpen;   // 대전 중엔 다른 선택 잠금
+    btn.addEventListener('click',()=>pickChallenger(entry));
+    row.appendChild(btn);
+    box.appendChild(row);
+  });
+}
+function pickChallenger(entry){
+  if(net.matchOpen) return;
+  if(!entry.conn || !entry.conn.open){ removeWaiting(entry); return; }
+  net.conn=entry.conn;
+  net.matchOpen=true;
+  names[1]=entry.name;
+  entry.conn.send({t:'start', hostName:names[0], guestName:names[1]});
+  // 나머지 대기자에게 "대기 중" 통보
+  net.waiting.forEach(e=>{ if(e!==entry){ try{ e.conn.send({t:'queued'}); }catch(_){} } });
+  renderWaitList();
+  startOnline();
+}
+// 대전 종료 후 방장 대기 화면으로 복귀(대기열 유지)
+function backToHostWait(){
+  net.matchOpen=false; net.conn=null;
+  $('result').style.display='none';
+  $('hud').classList.add('hide'); $('hostPanel').classList.add('hide');
+  $('lobby').style.display='flex';
+  $('stepName').classList.add('hide');
+  $('stepHost').classList.remove('hide');
+  setStatus('다음 도전자를 선택하세요','ok');
+  renderWaitList();
+}
+
+function handleData(d){
+  if(d.t==='ping'){ return; }   // keepalive
+  if(d.t==='full'){
+    setStatus('방 대기열이 가득 찼어요 (최대 4명). 잠시 후 다시 시도하세요.','err');
+  } else if(d.t==='queued'){
+    setStatus('다른 도전자가 대전 중이에요. 방장이 선택할 때까지 대기 중…','ok');
+  } else if(d.t==='bye'){
+    // 방장이 대전 종료 -> 게스트는 로비로
+    gameActive=false;
+    showToast('대전이 종료되었어요');
+    setTimeout(()=>{ if(confirm('대전이 끝났어요. 로비로 돌아갈까요?')) location.reload(); },300);
+  } else if(d.t==='verwarn'){
+    alert('상대와 게임 버전이 다릅니다 (방장: '+d.host+', 나: '+GAME_VER+').\n양쪽 모두 Ctrl+Shift+R로 새로고침 후 다시 시도하세요.');
   } else if(d.t==='start'){
     names[0]=d.hostName; names[1]=d.guestName; startOnline();
   } else if(d.t==='shot'){

@@ -453,7 +453,7 @@ const BOARD=26, HALF=BOARD/2;
 const EGG_R=0.62, EGG_H=0.34;      // 기준 알 반지름(개별 크기의 배수 기준)
 const PER_SIDE=8;                    // 진영별 8알
 // 손맛: 마찰 강하게(덜 미끄러짐), 반발 낮게(덜 통통 튐), 정지 임계 높게(빨리 멎음)
-const GAME_VERSION='v1.2';
+const GAME_VERSION='v1.3';
 try{ const vt=document.getElementById('verTag'); if(vt) vt.textContent=GAME_VERSION; }catch(_){}
 try{ const lv=document.getElementById('logoVer'); if(lv) lv.textContent=GAME_VERSION; }catch(_){}
 const FRICTION=0.958, STOP_V=0.025, REST=0.55, MAX_POWER=1.72, CHARGE_T=1.0;
@@ -1054,7 +1054,8 @@ function fireSelected(){
   // 임펄스 모델(자연스러움 + 시원함 절충):
   // 손가락 임펄스는 크기^1.5에 비례, 속도 = 임펄스/질량(sz²) = 1/√sz.
   // → 큰 알은 묵직하게 느리지만 끝까지 굴러가고, 작은 알은 날쌔게 튐.
-  const impulse = Math.min(chargePower,1)*MAX_POWER*Math.pow(sz,1.5);
+  const kingBoost = selectedEgg.userData.isKing ? 1.7 : 1;   // 대왕알은 더 파워풀
+  const impulse = Math.min(chargePower,1)*MAX_POWER*Math.pow(sz,1.5)*kingBoost;
   const power = impulse/(sz*sz);
   const uid=selectedEgg.userData.uid, vx=dir.x*power, vz=dir.y*power;
   if(isPhysicsOwner()){
@@ -1223,7 +1224,8 @@ function aiTurn(){
   const powBase=[0.55,0.72,0.9][difficulty];
   const charge=Math.min(powBase*0.5 + need*0.7 + Math.random()*0.1, 1);
   const sz=m.userData.szMul||1;
-  const pow=charge*MAX_POWER*Math.pow(sz,1.5)/(sz*sz);   // 임펄스 모델 동일 적용
+  const kb = m.userData.isKing ? 1.7 : 1;
+  const pow=charge*MAX_POWER*Math.pow(sz,1.5)/(sz*sz)*kb;   // 임펄스 모델 + 대왕알 부스트
   const dir=new THREE.Vector2(Math.sin(ang),Math.cos(ang));
   applyShot(m.userData.uid, dir.x*pow, dir.y*pow);
 }

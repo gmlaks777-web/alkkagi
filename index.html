@@ -418,7 +418,7 @@ const BOARD=26, HALF=BOARD/2;
 const EGG_R=0.62, EGG_H=0.34;      // 기준 알 반지름(개별 크기의 배수 기준)
 const PER_SIDE=8;                    // 진영별 8알
 // 손맛: 마찰 강하게(덜 미끄러짐), 반발 낮게(덜 통통 튐), 정지 임계 높게(빨리 멎음)
-const FRICTION=0.945, STOP_V=0.02, REST=0.55, MAX_POWER=1.22, CHARGE_T=1.15;
+const FRICTION=0.952, STOP_V=0.02, REST=0.55, MAX_POWER=1.15, CHARGE_T=1.15;
 const COL1=0xd94b4b, COL2=0x2f6fd0; // 홍/청 (장기색 느낌)
 
 /* ===== 알별 크기 (장기처럼 제각각) =====
@@ -609,7 +609,8 @@ function makeEgg(color, side, idx, szMul){
   const sideCol = isRed?COL1:COL2;
   const radius = EGG_R*szMul;   // 이 알의 실제 물리 반지름
   // 알별 질량: 크기가 클수록 무겁게. 단, 상한을 둬서 대왕알도 잘 밀고 나가게.
-  const mass = Math.min(Math.pow(szMul, 2.5), 7);
+  // 원반 알의 질량 = 면적에 비례(반지름²). 자연스러운 무게 관계.
+  const mass = szMul*szMul;
 
   const customSrc = isRed? loadedModels.red : loadedModels.blue;
   if(CUSTOM_MODEL.use && customSrc){
@@ -768,7 +769,7 @@ function applyQuake(){
   shake(0.7);
   for(const e of eggs){
     const u=e.userData; if(!u.alive) continue;
-    const a=Math.random()*Math.PI*2, f=(0.35+Math.random()*0.4)/Math.sqrt(u.mass||1);
+    const a=Math.random()*Math.PI*2, f=(0.35+Math.random()*0.4)/Math.pow(u.mass||1,0.7);
     u.vx+=Math.cos(a)*f; u.vz+=Math.sin(a)*f;
   }
   moving=true;
@@ -994,11 +995,12 @@ window.addEventListener('pointerup', ()=>{
 function fireSelected(){
   if(!selectedEgg) return;
   const dir=new THREE.Vector2(Math.sin(aimAngle),Math.cos(aimAngle));
-  const m=selectedEgg.userData.mass||1;
-  // 대왕알은 힘이 세서 빡빡 밀고 나가는 맛(부스트)
-  const kingBoost = selectedEgg.userData.isKing ? 2.4 : 1;
-  // 질량 페널티를 완화(4제곱근): 무거운 알도 풀차지면 끝까지 가게
-  const power=Math.min(chargePower,1)*MAX_POWER/Math.pow(m,0.28)*kingBoost;
+  const sz=selectedEgg.userData.szMul||1;
+  // 임펄스 모델(자연스러움 + 시원함 절충):
+  // 손가락 임펄스는 크기^1.5에 비례, 속도 = 임펄스/질량(sz²) = 1/√sz.
+  // → 큰 알은 묵직하게 느리지만 끝까지 굴러가고, 작은 알은 날쌔게 튐.
+  const impulse = Math.min(chargePower,1)*MAX_POWER*Math.pow(sz,1.5);
+  const power = impulse/(sz*sz);
   const uid=selectedEgg.userData.uid, vx=dir.x*power, vz=dir.y*power;
   if(isPhysicsOwner()){
     // 솔로 또는 호스트: 직접 물리에 적용
@@ -1028,9 +1030,8 @@ function physics(){
     const u=e.userData; if(!u.alive) continue;
     if(Math.abs(u.vx)>STOP_V||Math.abs(u.vz)>STOP_V){
       e.position.x+=u.vx; e.position.z+=u.vz;
-      // 무거운 알은 관성이 커서 마찰을 덜 받음(더 오래 굴러감)
-      const fr = 1 - (1-FRICTION)/Math.pow(u.mass||1, 0.35);
-      u.vx*=fr; u.vz*=fr; any=true;
+      // 마찰 감속은 질량과 무관하게 동일(자연법칙). 무게감은 발사·충돌에서 나옴.
+      u.vx*=FRICTION; u.vz*=FRICTION; any=true;
       e.rotation.y+=(u.vx+u.vz)*0.12;
     } else { u.vx=0; u.vz=0; }
   }
@@ -1123,7 +1124,7 @@ function explodeBomb(bomb){
     const dx=e.position.x-bx, dz=e.position.z-bz;
     const d=Math.hypot(dx,dz)||0.001;
     if(d<RANGE){
-      const f=FORCE*(1-d/RANGE)/Math.sqrt(u.mass||1);
+      const f=FORCE*(1-d/RANGE)/Math.pow(u.mass||1,0.7);
       u.vx += (dx/d)*f; u.vz += (dz/d)*f;
     }
   }
@@ -1165,7 +1166,9 @@ function aiTurn(){
   ang += (Math.random()*2-1)*errs[difficulty];
   const need=Math.min(bestD/BOARD,1);
   const powBase=[0.55,0.72,0.9][difficulty];
-  const pow=Math.min(powBase*0.5 + need*0.7 + Math.random()*0.1, 1)*MAX_POWER/Math.pow(m.userData.mass||1,0.28);
+  const charge=Math.min(powBase*0.5 + need*0.7 + Math.random()*0.1, 1);
+  const sz=m.userData.szMul||1;
+  const pow=charge*MAX_POWER*Math.pow(sz,1.5)/(sz*sz);   // 임펄스 모델 동일 적용
   const dir=new THREE.Vector2(Math.sin(ang),Math.cos(ang));
   applyShot(m.userData.uid, dir.x*pow, dir.y*pow);
 }

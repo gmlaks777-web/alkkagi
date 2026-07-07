@@ -60,34 +60,45 @@
   /* 방장 컨트롤 패널 (호스트 전용) */
   #hostPanel{position:absolute;left:22px;top:96px;z-index:22;
     background:rgba(11,14,20,.82);border:1px solid var(--line);border-radius:14px;
-    padding:12px 14px;backdrop-filter:blur(14px);min-width:190px}
+    padding:11px 12px;backdrop-filter:blur(14px);min-width:210px;max-width:240px}
   #hostPanel.hide{display:none}
-  .hpTitle{font-size:12px;font-weight:800;color:var(--sub);margin-bottom:10px;letter-spacing:.02em}
-  .hpRow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-  .hpRow:last-child{margin-bottom:0}
-  .hpTeam{min-width:36px;height:24px;padding:0 8px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  .hpTitle{font-size:12px;font-weight:800;color:var(--sub);margin-bottom:9px;letter-spacing:.02em}
+  .hpRow{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+  .hpTeam{min-width:48px;height:30px;padding:0 8px;border-radius:9px;display:flex;align-items:center;justify-content:center;
     font-weight:900;font-size:12px;color:#fff;flex:0 0 auto}
   .hpTeam.red{background:#d94b4b} .hpTeam.blue{background:#2f6fd0}
-  .hpBtn{flex:1;background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:9px;
-    padding:8px 6px;color:#fff;font-weight:700;font-size:12px;font-family:inherit;cursor:pointer}
-  .hpBtn:hover{background:rgba(255,255,255,.2)} .hpBtn:active{transform:scale(.95)}
-  .hpQuake{width:100%;margin-top:10px;padding:14px 6px;border-radius:11px;
+  /* 공통 버튼 레이아웃: 라벨 왼쪽 + 금액 오른쪽 배지 */
+  .hpBtn,.hpKing,.hpQuake,.hpBomb{display:flex;align-items:center;justify-content:space-between;gap:6px;
+    font-family:inherit;cursor:pointer;color:#fff;border-radius:10px}
+  .hpLabel{font-weight:800;font-size:12.5px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .hpLabel em{font-style:normal;font-weight:700;font-size:10px;opacity:.8}
+  .hpCost{flex:0 0 auto;font-weight:900;font-size:11px;background:rgba(0,0,0,.28);
+    border-radius:7px;padding:3px 7px;letter-spacing:.02em}
+  .hpBtn{flex:1;background:rgba(255,255,255,.1);border:1px solid var(--line);padding:9px 9px}
+  .hpBtn:hover{background:rgba(255,255,255,.2)} .hpBtn:active{transform:scale(.97)}
+  .hpKing{width:100%;margin-top:9px;padding:11px 10px;
+    background:linear-gradient(135deg,#f59e0b,#eab308);border:1px solid rgba(255,255,255,.3);
+    box-shadow:0 3px 12px rgba(230,170,20,.4);color:#3a2600}
+  .hpKing .hpCost{background:rgba(0,0,0,.18)}
+  .hpKing:hover{filter:brightness(1.08)} .hpKing:active{transform:scale(.97)}
+  .hpQuake{width:100%;margin-top:7px;padding:11px 10px;
     background:linear-gradient(135deg,#7a2ff2,#c026d3);border:1px solid rgba(255,255,255,.25);
-    color:#fff;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer;
     box-shadow:0 3px 12px rgba(120,20,220,.4)}
-  .hpQuake:hover{filter:brightness(1.1)} .hpQuake:active{transform:scale(.96)}
-  .hpBomb{width:100%;margin-top:8px;padding:14px 6px;border-radius:11px;
+  .hpQuake:hover{filter:brightness(1.1)} .hpQuake:active{transform:scale(.97)}
+  .hpBomb{width:100%;margin-top:7px;padding:11px 10px;
     background:linear-gradient(135deg,#c0392b,#e67e22);border:1px solid rgba(255,255,255,.25);
-    color:#fff;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer;
     box-shadow:0 3px 12px rgba(200,60,20,.4)}
-  .hpBomb:hover{filter:brightness(1.1)} .hpBomb:active{transform:scale(.96)}
+  .hpBomb:hover{filter:brightness(1.1)} .hpBomb:active{transform:scale(.97)}
   #verTag{position:fixed;right:10px;bottom:8px;z-index:5;
     font-size:11px;font-weight:700;color:rgba(255,255,255,.35);
     font-family:inherit;pointer-events:none;letter-spacing:.03em}
   @media (max-width:768px){
-    #hostPanel{left:8px;top:auto;bottom:100px;padding:9px 10px;min-width:150px}
-    .hpTitle{font-size:10px;margin-bottom:7px}
-    .hpBtn{padding:7px 4px;font-size:11px}
+    #hostPanel{left:8px;top:auto;bottom:96px;padding:8px 9px;min-width:150px;max-width:180px}
+    .hpTitle{font-size:10px;margin-bottom:6px}
+    .hpTeam{min-width:40px;height:26px;font-size:10px}
+    .hpLabel{font-size:11px} .hpLabel em{font-size:9px}
+    .hpCost{font-size:9.5px;padding:2px 5px}
+    .hpBtn{padding:7px 6px} .hpKing,.hpQuake,.hpBomb{padding:9px 8px;margin-top:6px}
   }
   @media (max-width:768px){
     #skillBar{right:8px;bottom:52px;gap:6px}
@@ -266,15 +277,21 @@
 <div id="hostPanel" class="hide">
   <div class="hpTitle">🎮 방장 컨트롤 (후원 연동)</div>
   <div class="hpRow">
-    <span class="hpTeam blue">상대</span>
-    <button class="hpBtn" data-skill="add" data-side="1">🥚 알 5개 추가</button>
+    <span class="hpTeam blue">파랑이</span>
+    <button class="hpBtn" data-skill="add" data-side="1">
+      <span class="hpLabel">🥚 알 추가 <em>대왕 22%</em></span><span class="hpCost">3천원</span></button>
   </div>
   <div class="hpRow">
-    <span class="hpTeam red">방장</span>
-    <button class="hpBtn" data-skill="add" data-side="0">🥚 알 5개 추가</button>
+    <span class="hpTeam red">허호랑</span>
+    <button class="hpBtn" data-skill="add" data-side="0">
+      <span class="hpLabel">🥚 알 추가 <em>대왕 22%</em></span><span class="hpCost">3천원</span></button>
   </div>
-  <button class="hpQuake" data-skill="quake" data-side="0">💥 지진</button>
-  <button class="hpBomb" data-skill="bomb" data-side="0">💣 폭탄 추가</button>
+  <button class="hpKing" data-skill="king" data-side="0">
+    <span class="hpLabel">👑 대왕알 확정</span><span class="hpCost">3만원</span></button>
+  <button class="hpQuake" data-skill="quake" data-side="0">
+    <span class="hpLabel">💥 지진</span><span class="hpCost">만원</span></button>
+  <button class="hpBomb" data-skill="bomb" data-side="0">
+    <span class="hpLabel">💣 폭탄 추가</span><span class="hpCost">2천원</span></button>
 </div>
 <div id="toast"></div>
 <div id="verTag">v1.0</div>
@@ -453,7 +470,7 @@ const BOARD=26, HALF=BOARD/2;
 const EGG_R=0.62, EGG_H=0.34;      // 기준 알 반지름(개별 크기의 배수 기준)
 const PER_SIDE=8;                    // 진영별 8알
 // 손맛: 마찰 강하게(덜 미끄러짐), 반발 낮게(덜 통통 튐), 정지 임계 높게(빨리 멎음)
-const GAME_VERSION='v1.4';
+const GAME_VERSION='v1.5';
 try{ const vt=document.getElementById('verTag'); if(vt) vt.textContent=GAME_VERSION; }catch(_){}
 try{ const lv=document.getElementById('logoVer'); if(lv) lv.textContent=GAME_VERSION; }catch(_){}
 const FRICTION=0.958, STOP_V=0.025, REST=0.55, MAX_POWER=1.72, CHARGE_T=1.0;
@@ -798,9 +815,9 @@ function updateParticles(){
 // add: 내 진영에 알 5개 추가(확률로 대왕알). quake: 즉발 랜덤 충격.
 const KING_MULT = 4 * EGG_SIZES[0];   // 제일 큰 알(EGG_SIZES[0])의 4배
 const KING_CHANCE = 0.22;             // 대왕알 등장 확률
-let skillUsed={add:false, quake:false};
+let skillUsed={add:false, quake:false, king:false, bomb:false};
 function resetSkills(){
-  skillUsed={add:false, quake:false};
+  skillUsed={add:false, quake:false, king:false, bomb:false};
 }
 function applyQuake(){
   showToast('💥 지진 발생!');
@@ -872,10 +889,12 @@ function useSkill(name, targetSide, opts){
     if(skillUsed[name]) return;
     skillUsed[name]=true;
   }
-  if(name==='add'){
-    // 지정 진영 뒤쪽에 5개를 흩뿌림. 확률로 1개가 대왕알.
+  if(name==='add' || name==='king'){
+    // add: 5개 추가(확률로 대왕알). king: 대왕알 100% 확정.
+    const guaranteedKing = (name==='king');
     const zBase = (side===0)? (HALF-5.5) : -(HALF-5.5);
-    const kingIdx = Math.random()<KING_CHANCE ? Math.floor(Math.random()*5) : -1;
+    const kingIdx = guaranteedKing ? Math.floor(Math.random()*5)
+                                   : (Math.random()<KING_CHANCE ? Math.floor(Math.random()*5) : -1);
     const specs=[];
     const kingR = EGG_R*KING_MULT;   // 대왕알 반지름
     for(let k=0;k<5;k++){
@@ -1255,7 +1274,7 @@ $('rnextBtn').addEventListener('click',()=>{
 });
 $('rexitBtn').addEventListener('click',()=>location.reload());
 // 방장 컨트롤: 양팀 스킬을 제한 없이 발동 (후원 연동도 이 함수 사용)
-document.querySelectorAll('#hostPanel .hpBtn, #hostPanel .hpQuake, #hostPanel .hpBomb').forEach(b=>{
+document.querySelectorAll('#hostPanel .hpBtn, #hostPanel .hpKing, #hostPanel .hpQuake, #hostPanel .hpBomb').forEach(b=>{
   b.addEventListener('click',()=>{
     const skill=b.dataset.skill, side=parseInt(b.dataset.side,10);
     useSkill(skill, side, {force:true});

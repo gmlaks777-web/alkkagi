@@ -1068,7 +1068,7 @@ renderer.domElement.addEventListener('pointermove', e=>{
   // 손가락이 시작점에서 벗어난 거리 → 회전 속도. 데드존 8px, 그 이후 비례.
   const dead=8;
   const off = Math.abs(dx)>dead ? (dx - Math.sign(dx)*dead) : 0;
-  aimVel = -off*0.00035;   // 부호: 오른쪽 끌면 시계방향(기존과 동일 방향)
+  aimVel = -off*0.00025;   // 부호: 오른쪽 끌면 시계방향(기존과 동일 방향)
 });
 window.addEventListener('pointerup', ()=>{
   if(topDragging){ topDragging=false; }

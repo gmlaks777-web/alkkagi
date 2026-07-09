@@ -80,6 +80,7 @@
     background:linear-gradient(135deg,#f59e0b,#eab308);border:1px solid rgba(255,255,255,.3);
     box-shadow:0 3px 12px rgba(230,170,20,.4);color:#3a2600}
   .hpKing .hpCost{background:rgba(0,0,0,.18)}
+  .hpRow .hpKing{flex:1;width:auto;margin-top:0;padding:9px 9px}
   .hpKing:hover{filter:brightness(1.08)} .hpKing:active{transform:scale(.97)}
   .hpQuake{width:100%;margin-top:7px;padding:11px 10px;
     background:linear-gradient(135deg,#7a2ff2,#c026d3);border:1px solid rgba(255,255,255,.25);
@@ -286,8 +287,16 @@
     <button class="hpBtn" data-skill="add" data-side="0">
       <span class="hpLabel">🥚 알 추가 <em>대왕 22%</em></span><span class="hpCost">3천원</span></button>
   </div>
-  <button class="hpKing" data-skill="king" data-side="0">
-    <span class="hpLabel">👑 대왕알 확정</span><span class="hpCost">3만원</span></button>
+  <div class="hpRow">
+    <span class="hpTeam blue">파랑이</span>
+    <button class="hpKing" data-skill="king" data-side="1">
+      <span class="hpLabel">👑 대왕알 확정</span><span class="hpCost">3만원</span></button>
+  </div>
+  <div class="hpRow">
+    <span class="hpTeam red">허호랑</span>
+    <button class="hpKing" data-skill="king" data-side="0">
+      <span class="hpLabel">👑 대왕알 확정</span><span class="hpCost">3만원</span></button>
+  </div>
   <button class="hpQuake" data-skill="quake" data-side="0">
     <span class="hpLabel">💥 지진</span><span class="hpCost">만원</span></button>
   <button class="hpBomb" data-skill="bomb" data-side="0">
@@ -340,8 +349,8 @@
   </div>
 
   <div id="stepJoin" class="hide">
-    <input id="joincode" maxlength="8" placeholder="코드 입력"
-      style="text-align:center;letter-spacing:4px;text-transform:uppercase;font-size:22px;font-weight:800">
+    <input id="joincode" maxlength="6" placeholder="숫자 코드" inputmode="numeric" pattern="[0-9]*"
+      style="text-align:center;letter-spacing:4px;font-size:22px;font-weight:800">
     <div class="opts">
       <div class="opt" id="btnJoin">입장하기</div>
       <div class="opt" id="btnBackName">뒤로</div>
@@ -470,7 +479,7 @@ const BOARD=26, HALF=BOARD/2;
 const EGG_R=0.62, EGG_H=0.34;      // 기준 알 반지름(개별 크기의 배수 기준)
 const PER_SIDE=8;                    // 진영별 8알
 // 손맛: 마찰 강하게(덜 미끄러짐), 반발 낮게(덜 통통 튐), 정지 임계 높게(빨리 멎음)
-const GAME_VERSION='v1.5';
+const GAME_VERSION='v1.6';
 try{ const vt=document.getElementById('verTag'); if(vt) vt.textContent=GAME_VERSION; }catch(_){}
 try{ const lv=document.getElementById('logoVer'); if(lv) lv.textContent=GAME_VERSION; }catch(_){}
 const FRICTION=0.958, STOP_V=0.025, REST=0.55, MAX_POWER=1.72, CHARGE_T=1.0;
@@ -1021,6 +1030,7 @@ function selectEgg(egg){
 }
 
 let pressing=false, dragStartX=0, aimStartAngle=0, didDrag=false;
+let aimVel=0;   // 조준 연속 회전 속도(손가락을 한쪽에 유지하면 계속 회전)
 let topDragging=false, topDragX=0, topDragY=0, topStartPanX=0, topStartPanZ=0;
 renderer.domElement.addEventListener('pointerdown', e=>{
   try{ renderer.domElement.setPointerCapture(e.pointerId); }catch(_){}
@@ -1036,7 +1046,7 @@ renderer.domElement.addEventListener('pointerdown', e=>{
   }
   if(!gameActive||moving||!humanControls()) return;
   if(!selectedEgg) return;
-  pressing=true; didDrag=false; dragStartX=e.clientX; aimStartAngle=aimAngle;
+  pressing=true; didDrag=false; dragStartX=e.clientX; aimStartAngle=aimAngle; aimVel=0;
   charging=true; chargeStart=performance.now(); chargePower=0;
   $('power').style.display='block';
 });
@@ -1055,10 +1065,14 @@ renderer.domElement.addEventListener('pointermove', e=>{
   if(!pressing||!selectedEgg) return;
   const dx=e.clientX-dragStartX;
   if(Math.abs(dx)>4) didDrag=true;
-  aimAngle=aimStartAngle - dx*0.006; updateEggCamera();
+  // 손가락이 시작점에서 벗어난 거리 → 회전 속도. 데드존 8px, 그 이후 비례.
+  const dead=8;
+  const off = Math.abs(dx)>dead ? (dx - Math.sign(dx)*dead) : 0;
+  aimVel = -off*0.00035;   // 부호: 오른쪽 끌면 시계방향(기존과 동일 방향)
 });
 window.addEventListener('pointerup', ()=>{
   if(topDragging){ topDragging=false; }
+  aimVel=0;
   if(!pressing) return; pressing=false;
   if(charging){
     if(chargePower>0.06) fireSelected();
@@ -1346,6 +1360,11 @@ function tick(){
     place(arrowMesh, 1, 1);
     if(CAM.mode==='egg') updateEggCamera();
   }
+  // 조준 연속 회전: 손가락을 한쪽에 유지하면 매 프레임 계속 돌아감
+  if(pressing && selectedEgg && aimVel!==0){
+    aimAngle += aimVel;
+    updateEggCamera();
+  }
   camPos.lerp(camPosTarget,0.12); camLook.lerp(camLookTarget,0.12);
   camera.position.copy(camPos); camera.lookAt(camLook);
   // 화면 흔들림
@@ -1436,8 +1455,8 @@ const PEER_CONFIG={
   ],
   'iceCandidatePoolSize':4
 };
-function shortId(){ return Math.random().toString(36).slice(2,6).toUpperCase(); }
-function roomToPeerId(code){ return 'alkkagi3d-'+code.toUpperCase(); }
+function shortId(){ return String(Math.floor(100000+Math.random()*900000)); }   // 6자리 숫자
+function roomToPeerId(code){ return 'alkkagi3d-'+String(code).trim(); }
 function setStatus(msg,cls){ const s=$('status'); s.textContent=msg||''; s.className=cls||''; }
 function getNick(){
   const n=$('nick').value.trim();
@@ -1511,9 +1530,10 @@ $('btnCreate').addEventListener('click',()=>{
   });
 });
 
+$('joincode').addEventListener('input',e=>{ e.target.value=e.target.value.replace(/[^0-9]/g,''); });
 $('btnJoin').addEventListener('click',()=>{
   let nick=$('nick').value.trim();
-  const code=$('joincode').value.trim().toUpperCase();
+  const code=$('joincode').value.trim().replace(/[^0-9]/g,'');
   if(!nick){ nick='파랑이'+(Math.floor(Math.random()*90)+10); $('nick').value=nick; }
   if(!code){ setStatus('초대 코드를 입력해주세요','err'); return; }
   names[1]=nick; soloMode=false; isHost=false; myPlayer=1;
